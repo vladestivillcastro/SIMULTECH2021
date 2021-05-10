@@ -1,0 +1,718 @@
+{UTF-8}
+Response And Activation=
+	invocation rate*PAMPs*"Inflamatory (M1) Alveolar Macrophages"
+	~	Tcells/Hour
+	~		|
+
+Activation=
+	expected activation*Viral Load
+	~	macrophages/Hour
+	~		|
+
+feeedback rate=
+	0.001
+	~	macrophages/(Hour*inferon)
+	~		|
+
+ActivationByTcellInterferon=
+	feeedback rate*TcellInterferon
+	~	macrophages/Hour
+	~		|
+
+Resting Alveolar Macrophages= INTEG (
+	-Activation-ActivationByTcellInterferon,
+		5000)
+	~	macrophages
+	~		|
+
+"Inflamatory (M1) Alveolar Macrophages"= INTEG (
+	Activation+ActivationByTcellInterferon-Immunoregulation,
+		3)
+	~	macrophages
+	~		|
+
+virus elimination rate by adaptive immune system=
+	0.0001*EXP( -patient precondition )
+	~	viruses/(Hour*Tcells*viruses)
+	~		|
+
+patient precondition=
+	2
+	~	Dmnl
+	~		|
+
+Adaptive Immune System Net Effect=
+	Active Adaptive Immune System*virus elimination rate by adaptive immune system*Viral Load
+	~	viruses/Hour
+	~		|
+
+Tcell Interferon Production by TCell=
+	0.001
+	~	inferon/(Hour*Tcells)
+	~		|
+
+TcellInterferon= INTEG (
+	Tcell Interferon net-Tcell Interferon Decay,
+		0)
+	~	inferon
+	~		|
+
+Tcell Interferon Decay=
+	Interfeton Decay rate*TcellInterferon
+	~	inferon/Hour
+	~		|
+
+Tcell Interferon net=
+	Active Adaptive Immune System*Tcell Interferon Production by TCell
+	~	inferon/Hour
+	~		|
+
+Interfeton Decay rate=
+	0.01
+	~	1/Hour
+	~		|
+
+virulence=
+	2
+	~	Dmnl
+	~		|
+
+rate of macrophages phagocytosis=
+	0.001/(virulence*virulence*virulence)
+	~	(viruses/Hour)/(viruses * macrophages)
+	~		|
+
+sensitivity=
+	0.2+(virulence-2)*(1-0.2)/(1-2)
+	~	pamps/(Hour*viruses)
+	~		|
+
+Viral Load= INTEG (
+	net new viruses-Adaptive Immune System Net Effect-Innate Immune System Net Effect-virus net deaths\
+		,
+		Initial Viral Load in Thousands)
+	~	viruses
+	~		|
+
+expected activation=
+	SMOOTH( activation rate by which a macrophage is activated per virus present per macrophage\
+		, time to diffuse )
+	~	macrophages/(Hour*viruses)
+	~		|
+
+PAMPs= INTEG (
+	PAMPs and RRS alarm-Alarm Decay,
+		0)
+	~	pamps
+	~		|
+
+Immunoregulation=
+	Immunomodulation Rate*"Inflamatory (M1) Alveolar Macrophages"*IL6 modulation factor/\
+		MAX( 0.05 , Delayed IL6*LN(MAX( 3 , Delayed IL6 ))  *LN(MAX( 3 , Delayed IL6 ))*LN(\
+		MAX( 3 , Delayed IL6 )))
+	~	macrophages / Hour
+	~		|
+
+time to diffuse=
+	6
+	~	Hour
+	~		|
+
+"Immunosupressed (M2) Alveolar macrophages"= INTEG (
+	Immunoregulation,
+		10)
+	~	macrophages
+	~		|
+
+Infection Rate=
+	(Rate by which a virus infects a lung cell per lung cell present*Viral Load*"Un-Infected Lung Tissue"\
+		)
+	-(success rate infected lung cells alert per interferon hour*Infected Lung Tissue*Interferon Strength\
+		)
+	~	lung cells/Hour
+	~		|
+
+virus net deaths=
+	Viral Load*virus death proportionality constant
+	~	viruses/Hour
+	~		|
+
+Innate Immune System Net Effect=
+	"Inflamatory (M1) Alveolar Macrophages"*rate of macrophages phagocytosis*Viral Load
+	~	viruses/Hour
+	~		|
+
+net new viruses=
+	Infected Lung Tissue*new viruses per hour per infected lung cell
+	~	viruses/Hour
+	~		|
+
+PAMPs and RRS alarm=
+	sensitivity*Viral Load
+	~	pamps/Hour
+	~		|
+
+delated Il6 net=
+	DELAY FIXED( IL6 production , IL6 delay time, IL6 production )
+	~	pg/(mL*Hour)
+	~		|
+
+Delayed IL6= INTEG (
+	delated Il6 net-Delayed IL6 degradation,
+		0)
+	~	pg/mL
+	~		|
+
+IL6= INTEG (
+	IL6 production-IL6 degradation,
+		IL6 initial value)
+	~	pg/mL
+	~		|
+
+IL6 initial value=
+	3
+	~	pg/mL
+	~		|
+
+IL6 delay time=
+	6
+	~	Hour
+	~		|
+
+Delayed IL6 degradation=
+	Delayed IL6*IL6 degradation rate
+	~	pg/(mL*Hour)
+	~		|
+
+IL6 production=
+	"Inflamatory (M1) Alveolar Macrophages"*IL6 synthesis Rate
+	~	(pg/mL)/Hour
+	~		|
+
+net back off=
+	Active Adaptive Immune System*back off rate
+	~	Tcells/Hour
+	~		|
+
+Active Adaptive Immune System= INTEG (
+	Response And Activation-net back off,
+		10)
+	~	Tcells
+	~		|
+
+back off rate=
+	0.005
+	~	1/Hour
+	~		|
+
+invocation rate=
+	0.0001
+	~	Tcells/(Hour*pamps*macrophages)
+	~		|
+
+Resting Adaptive Immune System= INTEG (
+	-Response And Activation,
+		1)
+	~	Tcells
+	~		|
+
+activation rate by which a macrophage is activated per virus present per macrophage=
+	MIN( maximum activation rate,  PAMPs*detection factor)
+	~	macrophages/(viruses*Hour)
+	~		|
+
+detection factor=
+	1e-05
+	~	macrophages/(Hour*viruses*pamps)
+	~		|
+
+maximum activation rate=
+	0.07
+	~	macrophages/(Hour*viruses)
+	~		|
+
+Regeneration Rate=
+	regeneration fraction*"Un-Infected Lung Tissue"+repair rate*"Immunosupressed (M2) Alveolar macrophages"
+	~	lung cells /Hour
+	~		|
+
+repair rate=
+	0.2
+	~	lung cells/(Hour*macrophages)
+	~		|
+
+IL6 modulation factor=
+	0.05
+	~	pg/mL
+	~		|
+
+IL6 degradation rate=
+	0.8
+	~	(pg/(Hour*mL))/(pg/mL)
+	~		|
+
+IL6 synthesis Rate=
+	0.08
+	~	pg/(Hour*mL*macrophages)
+	~		|
+
+IL6 degradation=
+	IL6*IL6 degradation rate
+	~	pg/(Hour*mL)
+	~		|
+
+success rate infected lung cells alert per interferon hour=
+	IF THEN ELSE(Initial Viral Load in Thousands>=1 , default rate/1000, default rate)
+	~	(1/Hour)/inferon
+	~		|
+
+Decay rate=
+	0.005
+	~	(pamps/Hour)/pamps
+	~		|
+
+Alarm Decay=
+	Decay rate*PAMPs
+	~	pamps/Hour
+	~		|
+
+default rate=
+	0.001
+	~	1/(Hour*inferon)
+	~		|
+
+Immunomodulation Rate=
+	0.5
+	~	macrophages/(Hour*macrophages)
+	~		|
+
+Interferon Net=
+	Infected Lung Tissue*Interferon per hour per cell
+	~	inferon/Hour
+	~		|
+
+Interferon per hour per cell=
+	2
+	~	(inferon/Hour) /lung cells
+	~		|
+
+Infected Lung Tissue= INTEG (
+	Infection Rate-Destruction Net Rate,
+		0)
+	~	lung cells
+	~		|
+
+Interferon Decay=
+	0
+	~	inferon/Hour
+	~		|
+
+Interferon Strength= INTEG (
+	Interferon Net-Interferon Decay,
+		0.8)
+	~	inferon
+	~		|
+
+Cleaning Rate=
+	Cleaning rate per destroyed lung cell*Destroyed Lung Tissue
+	~	lung cells/Hour
+	~		|
+
+Cleaning rate per destroyed lung cell=
+	0.2
+	~	(lung cells/Hour)/lung cells
+	~		|
+
+Destroyed Lung Tissue= INTEG (
+	Destruction Net Rate-Cleaning Rate,
+		0)
+	~	lung cells
+	~		|
+
+Destruction Net Rate=
+	Infected Lung Tissue*Infected Lung Tissue Death Proportionality Constant
+	~	lung cells/Hour
+	~		|
+
+Infected Lung Tissue Death Proportionality Constant=
+	0.5
+	~	(lung cells/Hour)/lung cells
+	~		|
+
+Initial lung Cells in Thousands=
+	15000
+	~	lung cells
+	~		|
+
+Initial Viral Load in Thousands=
+	1
+	~	viruses
+	~		|
+
+new viruses per hour per infected lung cell=
+	0.002
+	~	(viruses/Hour)/ lung cells
+	~		|
+
+Rate by which a virus infects a lung cell per lung cell present=
+	0.0008
+	~	(lung cells/Hour)/(lung cells * viruses)
+	~		|
+
+virus death proportionality constant=
+	0.001
+	~	(viruses/Hour)/ viruses
+	~		|
+
+"Un-Infected Lung Tissue"= INTEG (
+	Regeneration Rate-Infection Rate,
+		Initial lung Cells in Thousands)
+	~	lung cells
+	~		|
+
+regeneration fraction=
+	0.001
+	~	(lung cells/Hour)/lung cells
+	~		|
+
+********************************************************
+	.Control
+********************************************************~
+		Simulation Control Parameters
+	|
+
+FINAL TIME  = 480
+	~	Hour
+	~	The final time for the simulation.
+	|
+
+INITIAL TIME  = 0
+	~	Hour
+	~	The initial time for the simulation.
+	|
+
+SAVEPER  = 
+        TIME STEP
+	~	Hour [0,?]
+	~	The frequency with which output is stored.
+	|
+
+TIME STEP  = 1
+	~	Hour [0,?]
+	~	The time step for the simulation.
+	|
+
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*View 1
+$192-192-192,0,Times New Roman|12||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|72,72,100,0
+10,1,"Un-Infected Lung Tissue",281,-17,40,20,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,2,Infected Lung Tissue,546,-16,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+12,3,48,86,-19,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,4,6,1,4,0,0,22,0,0,0,-1--1--1,,1|(210,-14)|
+1,5,6,3,100,0,0,22,0,0,0,-1--1--1,,1|(131,-14)|
+11,6,48,173,-14,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,7,Regeneration Rate,173,2,47,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,8,10,2,4,0,0,22,0,0,0,-1--1--1,,1|(458,-12)|
+1,9,10,1,100,0,0,22,0,0,0,-1--1--1,,1|(359,-12)|
+11,10,1828,404,-12,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,11,Infection Rate,404,4,34,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+10,12,Initial Viral Load in Thousands,224,118,47,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,13,regeneration fraction,130,-82,56,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,14,13,6,1,0,0,0,0,64,0,-1--1--1,,1|(164,-39)|
+1,15,1,6,1,0,0,0,0,64,0,-1--1--1,,1|(199,15)|
+10,16,Infected Lung Tissue Death Proportionality Constant,710,48,56,21,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,17,virus death proportionality constant,133,134,39,21,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,18,Initial lung Cells in Thousands,257,-78,50,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,19,18,1,1,0,0,0,0,64,1,-1--1--1,,1|(277,-41)|
+10,20,Rate by which a virus infects a lung cell per lung cell present,420,-78,68,21,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,21,20,10,0,0,0,0,0,64,0,-1--1--1,,1|(411,-45)|
+1,22,1,10,1,0,0,0,0,64,0,-1--1--1,,1|(344,-47)|
+10,23,Destroyed Lung Tissue,783,-17,40,20,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,24,26,23,4,0,0,22,0,0,0,-1--1--1,,1|(707,-19)|
+1,25,26,2,100,0,0,22,0,0,0,-1--1--1,,1|(622,-19)|
+11,26,2092,665,-19,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,27,Destruction Net Rate,665,-3,53,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+12,28,48,975,-19,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,29,31,28,4,0,0,22,0,0,0,-1--1--1,,1|(931,-13)|
+1,30,31,23,100,0,0,22,0,0,0,-1--1--1,,1|(854,-13)|
+11,31,48,891,-13,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,32,Cleaning Rate,891,3,36,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,33,16,26,0,0,0,0,0,64,0,-1--1--1,,1|(685,11)|
+10,34,new viruses per hour per infected lung cell,706,94,55,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,35,2,26,1,0,0,0,0,64,0,-1--1--1,,1|(610,-59)|
+1,36,23,31,1,0,0,0,0,64,0,-1--1--1,,1|(822,-47)|
+10,37,Cleaning rate per destroyed lung cell,915,-66,49,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,38,37,31,0,0,0,0,0,64,0,-1--1--1,,1|(904,-42)|
+10,39,Interferon Strength,472,130,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+1,40,39,10,1,0,0,0,0,64,0,-1--1--1,,1|(442,49)|
+10,41,success rate infected lung cells alert per interferon hour,312,58,44,44,2,131,0,0,0,0,0,0,0,0,0,0,0,0
+1,42,41,11,1,0,0,0,0,64,0,-1--1--1,,1|(367,44)|
+12,43,48,488,15,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,44,46,39,4,0,0,22,0,0,0,-1--1--1,,1|(492,83)|
+1,45,46,43,100,0,0,22,0,0,0,-1--1--1,,1|(492,32)|
+11,46,48,492,49,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,47,Interferon Net,492,65,36,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+12,48,48,617,134,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,49,51,48,4,0,0,22,0,0,0,-1--1--1,,1|(584,134)|
+1,50,51,39,100,0,0,22,0,0,0,-1--1--1,,1|(530,134)|
+11,51,48,555,134,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,52,Interferon Decay,555,150,43,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,53,2,46,1,0,0,0,0,64,0,-1--1--1,,1|(521,36)|
+10,54,Interferon per hour per cell,583,73,36,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,55,54,46,1,0,0,0,0,64,0,-1--1--1,,1|(542,53)|
+12,56,2318557440,813,863,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+Viral Load,Graph
+1,57,2,11,1,0,0,0,0,64,0,-1--1--1,,1|(481,-41)|
+10,58,Resting Alveolar Macrophages,618,450,40,20,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,59,"Inflamatory (M1) Alveolar Macrophages",370,469,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+10,60,"Immunosupressed (M2) Alveolar macrophages",137,469,48,27,3,131,0,0,0,0,0,0,0,0,0,0,0,0
+1,61,63,59,4,0,0,22,0,0,0,-1--1--1,,1|(495,469)|
+1,62,63,58,100,0,0,22,0,0,0,-1--1--1,,1|(539,447)|
+11,63,1212,495,447,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,64,Activation,495,463,28,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,65,67,60,4,0,0,22,0,0,0,-1--1--1,,1|(222,481)|
+1,66,67,59,100,0,0,22,0,0,0,-1--1--1,,1|(300,481)|
+11,67,332,265,481,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,68,Immunoregulation,265,497,47,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+10,69,PAMPs,670,266,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+10,70,rate of macrophages phagocytosis,174,277,39,39,2,131,0,8,0,0,0,0,-1--1--1,0-0-0,|11||0-0-0,0,0,0,0,0,0
+12,71,48,470,271,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,72,74,69,4,0,0,22,0,0,0,-1--1--1,,1|(589,275)|
+1,73,74,71,100,0,0,22,0,0,0,-1--1--1,,1|(508,275)|
+11,74,48,543,275,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,75,PAMPs and RRS alarm,543,291,59,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+10,76,Immunomodulation Rate,137,416,51,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,77,76,67,1,0,0,0,0,64,0,-1--1--1,,1|(217,418)|
+1,78,59,67,1,0,0,0,0,64,0,-1--1--1,,1|(290,431)|
+12,79,2318557448,206,863,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+"Inflamatory (M1) Alveolar Macrophages",Graph
+1,80,12,41,0,0,0,0,0,64,0,-1--1--1,,1|(253,97)|
+12,81,48,838,262,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,82,84,81,4,0,0,22,0,0,0,-1--1--1,,1|(797,262)|
+1,83,84,69,100,0,0,22,0,0,0,-1--1--1,,1|(732,262)|
+11,84,48,761,262,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,85,Alarm Decay,761,278,34,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+10,86,Decay rate,760,222,28,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,87,86,84,0,0,0,0,0,64,0,-1--1--1,,1|(760,236)|
+1,88,69,84,1,0,0,0,0,64,0,-1--1--1,,1|(714,250)|
+10,89,default rate,383,101,29,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,90,89,41,0,0,0,0,0,64,0,-1--1--1,,1|(365,90)|
+10,91,sensitivity,580,229,32,32,2,131,0,0,0,0,0,0,0,0,0,0,0,0
+1,92,91,74,0,0,0,0,0,64,0,-1--1--1,,1|(557,256)|
+10,93,IL6,936,87,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+12,94,48,1076,82,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,95,97,94,4,0,0,22,0,0,0,-1--1--1,,1|(1044,83)|
+1,96,97,93,100,0,0,22,0,0,0,-1--1--1,,1|(993,83)|
+11,97,48,1016,83,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,98,IL6 degradation,1016,99,41,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+12,99,48,793,80,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,100,102,93,4,0,0,22,0,0,0,-1--1--1,,1|(870,81)|
+1,101,102,99,100,0,0,22,0,0,0,-1--1--1,,1|(817,81)|
+11,102,48,838,81,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,103,IL6 production,838,97,38,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+10,104,IL6 degradation rate,1084,38,51,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,105,104,97,0,0,0,0,0,64,0,-1--1--1,,1|(1052,58)|
+1,106,93,97,1,0,0,0,0,64,0,-1--1--1,,1|(990,64)|
+12,107,2318557456,509,865,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+IL6,Graph
+10,108,IL6 synthesis Rate,833,38,47,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,109,108,102,0,0,0,0,0,64,0,-1--1--1,,1|(834,53)|
+10,110,"Inflamatory (M1) Alveolar Macrophages",774,152,62,14,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+1,111,110,102,0,0,0,0,0,64,0,-1--1--1,,1|(804,117)|
+10,112,IL6,933,135,18,8,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+10,113,activation rate by which a macrophage is activated per virus present per macrophage,632,331,75,21,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,114,IL6 modulation factor,141,535,55,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,115,114,68,0,0,0,0,0,64,0,-1--1--1,,1|(195,518)|
+12,116,2318557464,815,1164,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+"Immunosupressed (M2) Alveolar macrophages",Graph
+10,117,"Immunosupressed (M2) Alveolar macrophages",117,74,50,21,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+10,118,repair rate,89,23,27,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,119,118,6,0,0,0,0,0,64,0,-1--1--1,,1|(130,4)|
+1,120,117,6,0,0,0,0,0,64,0,-1--1--1,,1|(145,27)|
+12,121,2318557472,1120,862,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+PAMPs,Graph
+10,122,maximum activation rate,795,312,37,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,123,122,113,0,0,0,0,0,64,0,-1--1--1,,1|(739,318)|
+1,124,69,113,0,0,0,0,0,64,0,-1--1--1,,1|(655,292)|
+10,125,detection factor,485,321,40,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,126,125,113,0,0,0,0,0,64,0,-1--1--1,,1|(534,323)|
+10,127,Resting Adaptive Immune System,1115,509,40,20,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,128,Active Adaptive Immune System,829,497,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+1,129,131,128,4,0,0,22,0,0,0,-1--1--1,,1|(922,497)|
+1,130,131,127,100,0,0,22,0,0,0,-1--1--1,,1|(1031,497)|
+11,131,684,981,497,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,132,Response And Activation,981,519,37,14,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+12,133,48,675,496,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,134,136,133,4,0,0,22,0,0,0,-1--1--1,,1|(710,496)|
+1,135,136,128,100,0,0,22,0,0,0,-1--1--1,,1|(768,496)|
+11,136,48,741,496,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,137,net back off,741,512,31,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+10,138,invocation rate,1110,454,38,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,139,138,131,1,0,0,0,0,64,0,-1--1--1,,1|(1078,462)|
+1,140,128,136,1,0,0,0,0,64,0,-1--1--1,,1|(758,473)|
+10,141,PAMPs,905,460,27,8,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+1,142,141,131,0,0,0,0,0,64,0,-1--1--1,,1|(941,477)|
+10,143,back off rate,706,457,32,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,144,143,136,1,0,0,0,0,64,0,-1--1--1,,1|(734,472)|
+12,145,2318557480,208,1168,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+Active Adaptive Immune System,Graph
+10,146,Active Adaptive Immune System,284,330,46,14,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+10,147,"Inflamatory (M1) Alveolar Macrophages",284,288,62,14,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+10,148,virus elimination rate by adaptive immune system,248,383,38,38,2,131,0,0,0,0,0,0,0,0,0,0,0,0
+12,149,2318557488,803,1470,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+activation rate by which a macrophage is activated per virus present per macrophage,Graph
+12,150,2318557496,1124,1161,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+"Un-Infected Lung Tissue",Graph
+10,151,Delayed IL6,959,203,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+12,152,48,1120,198,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,153,155,152,4,0,0,22,0,0,0,-1--1--1,,1|(1085,198)|
+1,154,155,151,100,0,0,22,0,0,0,-1--1--1,,1|(1023,198)|
+11,155,48,1054,198,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,156,Delayed IL6 degradation,1054,220,33,14,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,157,104,155,1,0,0,0,0,64,0,-1--1--1,,1|(1091,105)|
+1,158,151,155,1,0,0,0,0,64,0,-1--1--1,,1|(1011,186)|
+12,159,48,819,202,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,160,162,151,4,0,0,22,0,0,0,-1--1--1,,1|(902,204)|
+1,161,162,159,100,0,0,22,0,0,0,-1--1--1,,1|(851,204)|
+11,162,48,880,204,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,163,delated Il6 net,880,220,37,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,164,103,162,0,0,0,0,0,64,0,-1--1--1,,1|(856,144)|
+10,165,IL6 delay time,921,285,38,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,166,165,162,0,0,0,0,0,64,0,-1--1--1,,1|(902,249)|
+10,167,IL6 initial value,970,23,41,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,168,167,93,0,0,0,0,0,64,1,-1--1--1,,1|(959,42)|
+10,169,Delayed IL6,289,529,39,8,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+10,170,Viral Load,428,185,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+12,171,48,767,189,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,172,174,170,4,0,0,22,0,0,0,-1--1--1,,1|(560,188)|
+1,173,174,171,100,0,0,22,0,0,0,-1--1--1,,1|(711,188)|
+11,174,48,659,188,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,175,net new viruses,659,204,40,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,176,2,174,1,0,0,0,0,64,0,-1--1--1,,1|(621,62)|
+1,177,34,174,0,0,0,0,0,64,0,-1--1--1,,1|(683,138)|
+1,178,12,170,1,0,0,0,0,64,1,-1--1--1,,1|(349,123)|
+12,179,48,136,225,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,180,182,179,4,0,0,22,0,0,0,-1--1--1,,1|(232,224)|
+1,181,182,170,100,0,0,22,0,0,0,-1--1--1,,1|(324,185)|
+11,182,48,324,224,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,183,Innate Immune System Net Effect,324,246,47,14,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,184,147,182,1,0,0,0,0,64,0,-1--1--1,,1|(317,270)|
+1,185,70,182,0,0,0,0,0,64,0,-1--1--1,,1|(257,247)|
+12,186,48,141,177,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,187,189,186,4,0,0,22,0,0,0,-1--1--1,,1|(180,173)|
+1,188,189,170,100,0,0,22,0,0,0,-1--1--1,,1|(306,173)|
+11,189,48,217,173,8,6,33,3,0,0,4,0,0,0,0,0,0,0,0,0
+10,190,virus net deaths,265,173,40,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,191,17,189,0,0,0,0,0,64,0,-1--1--1,,1|(184,157)|
+1,192,170,189,1,0,0,0,0,64,0,-1--1--1,,1|(317,137)|
+1,193,170,74,0,0,0,0,0,64,0,-1--1--1,,1|(489,233)|
+1,194,170,63,0,0,0,0,0,64,0,-1--1--1,,1|(461,316)|
+1,195,170,182,1,0,0,0,0,64,0,-1--1--1,,1|(406,224)|
+1,196,170,10,1,0,0,0,0,64,0,-1--1--1,,1|(408,84)|
+12,197,2318557504,205,1475,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+Immunoregulation,Graph
+10,198,expected activation,560,395,40,20,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,199,time to diffuse,673,382,33,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,200,199,198,1,0,0,0,0,64,0,-1--1--1,,1|(627,372)|
+1,201,169,67,0,0,0,0,0,64,0,-1--1--1,,1|(279,509)|
+1,202,113,198,0,0,0,0,0,64,0,-1--1--1,,1|(600,358)|
+1,203,198,63,0,0,0,0,0,64,0,-1--1--1,,1|(522,424)|
+12,204,2318557512,1120,1468,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+Activation,Graph
+12,205,2318557520,501,1469,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+expected activation,Graph
+12,206,48,368,411,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,207,209,206,4,0,0,22,0,0,0,-1--1--1,,1|(374,356)|
+1,208,209,170,100,0,0,22,0,0,0,-1--1--1,,1|(428,303)|
+11,209,48,374,303,8,6,33,3,0,0,4,0,0,0,0,0,0,0,0,0
+10,210,Adaptive Immune System Net Effect,429,303,47,14,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,211,146,209,0,0,0,0,0,64,0,-1--1--1,,1|(341,313)|
+1,212,148,209,1,0,0,0,0,64,0,-1--1--1,,1|(322,371)|
+10,213,virulence,75,264,26,26,6,131,0,1,0,0,0,0,192-128-192,0-0-0,|0||192-128-192,0,0,0,0,0,0
+1,214,213,70,0,0,0,0,0,64,0,-1--1--1,,1|(110,268)|
+10,215,virulence,654,218,31,8,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+1,216,215,91,0,0,0,0,0,64,0,-1--1--1,,1|(623,221)|
+10,217,TcellInterferon,914,410,40,20,3,3,0,1,0,0,0,0,255-0-0,0-0-0,|0||0-0-0,0,0,0,0,0,0
+12,218,48,717,408,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,219,221,218,4,0,0,22,0,0,0,-1--1--1,,1|(763,407)|
+1,220,221,217,100,0,0,22,0,0,0,-1--1--1,,1|(842,407)|
+11,221,48,805,407,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,222,Tcell Interferon Decay,805,423,56,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+12,223,48,1105,407,10,8,0,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,224,226,217,4,0,0,22,0,0,0,-1--1--1,,1|(987,406)|
+1,225,226,223,100,0,0,22,0,0,0,-1--1--1,,1|(1064,406)|
+11,226,48,1027,406,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,227,Tcell Interferon net,1027,422,48,8,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+10,228,Active Adaptive Immune System,934,328,46,14,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+1,229,228,226,0,0,0,0,0,64,0,-1--1--1,,1|(980,367)|
+10,230,Tcell Interferon Production by TCell,1065,339,53,14,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,231,230,226,1,0,0,0,0,64,0,-1--1--1,,1|(1038,381)|
+1,232,217,221,1,0,0,0,0,64,0,-1--1--1,,1|(833,389)|
+10,233,Interfeton Decay rate,825,342,53,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,234,233,221,0,0,0,0,0,64,0,-1--1--1,,1|(816,368)|
+12,235,2318557528,508,1167,150,150,3,44,0,0,2,0,0,0,0,0,0,0,0,0
+TcellInterferon,Graph
+1,236,170,209,1,0,0,0,0,64,0,-1--1--1,,1|(385,261)|
+10,237,TcellInterferon,475,551,45,8,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+10,238,feeedback rate,666,556,37,8,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+1,239,241,59,4,0,0,22,0,0,0,-1--1--1,,1|(370,500)|
+1,240,241,58,100,0,0,22,0,0,0,-1--1--1,,1|(595,481)|
+11,241,420,595,500,6,8,34,3,0,0,1,0,0,0,0,0,0,0,0,0
+10,242,ActivationByTcellInterferon,595,515,72,7,40,3,0,0,-1,0,0,0,0,0,0,0,0,0
+1,243,237,242,0,0,0,0,0,64,0,-1--1--1,,1|(529,534)|
+1,244,238,241,0,0,0,0,0,64,0,-1--1--1,,1|(632,529)|
+10,245,patient precondition,91,348,43,43,6,131,0,1,0,0,0,0,192-128-192,0-0-0,|0||0-0-0,0,0,0,0,0,0
+1,246,245,148,0,0,0,0,0,64,0,-1--1--1,,1|(164,364)|
+12,247,0,528,-53,13,18,8,7,0,11,0,0,0,0,255-0-0,0-0-0,|30||255-0-0,-1,-1,0,0,0,0
+A
+12,248,0,525,109,10,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+B
+12,249,0,497,210,11,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+C
+12,250,0,691,297,11,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+D
+12,251,0,400,433,10,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+E
+12,252,0,849,530,10,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+F
+12,253,0,911,52,12,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+G
+12,254,0,933,172,12,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+H
+12,255,0,912,376,7,15,8,7,0,27,0,0,0,0,255-0-0,0-0-0,|24|B|255-0-0,-1,-1,0,0,0,0
+I
+10,256,"Inflamatory (M1) Alveolar Macrophages",999,454,62,14,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|12||128-128-128,0,0,0,0,0,0
+1,257,256,131,0,0,0,0,0,64,0,-1--1--1,,1|(991,473)|
+///---\\\
+:L<%^E!@
+1:Virulence 2 Patient precondition 2.vdfx
+1:/Users/vlad/github-vlad/VirusModelling/VenSim_examples.d/May11Vlad_TheEnriqueStory.d/Virulence 2 Patient precondition 2.vdfx
+1:/Users/vlad/github-vlad/VirusModelling/VenSim_examples.d/May11Vlad_TheEnriqueStory.d/Virulence 2 Patient precondition 1.vdfx
+1:/Users/vlad/github-vlad/VirusModelling/VenSim_examples.d/May11Vlad_TheEnriqueStory.d/Virulence 2 Patient precondition 0.vdfx
+1:/Users/vlad/github-vlad/VirusModelling/VenSim_examples.d/May11Vlad_TheEnriqueStory.d/Virulence 1 Patient precondition 2.vdfx
+1:/Users/vlad/github-vlad/VirusModelling/VenSim_examples.d/May11Vlad_TheEnriqueStory.d/Virulence 1 Patient precondition 1.vdfx
+1:/Users/vlad/github-vlad/VirusModelling/VenSim_examples.d/May11Vlad_TheEnriqueStory.d/Virulence 1 Patient precondition 0.vdfx
+9:Virulence 2 Patient precondition 2
+23:0
+15:0,0,0,0,0,0
+19:100,0
+27:0,
+34:0,
+4:Time
+5:Inflamatory (M1) Alveolar Macrophages
+35:Date
+36:YYYY-MM-DD
+37:2000
+38:1
+39:1
+40:5
+41:0
+42:1
+72:0
+73:0
+24:0
+25:480
+26:480
+75:
+43:
